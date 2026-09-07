@@ -545,12 +545,17 @@ def build_development_content(places: list[DiningPlace], source: Path, output: P
             )
             dated_records = [record for record in records if record["capturedAt"]]
             cover = dated_records[-1] if dated_records else records[-1]
-            priced_records = [
+            priced_records = [record for record in records if record["price"] is not None]
+            dated_priced_records = [
                 record
-                for record in records
-                if record["price"] is not None and record["capturedAt"] is not None
+                for record in priced_records
+                if record["capturedAt"] is not None
             ]
-            latest_price = priced_records[-1] if priced_records else None
+            latest_price = (
+                dated_priced_records[-1]
+                if dated_priced_records
+                else priced_records[-1] if priced_records else None
+            )
             dishes.append(
                 {
                     "name": name,
@@ -592,6 +597,7 @@ def build_development_content(places: list[DiningPlace], source: Path, output: P
                     "name": stall.name,
                     "slug": stall.slug,
                     "photos": stall_photos,
+                    "dishes": serialize_dishes(stall_photos),
                     "photoCount": len(stall_photos),
                     "cover": stall_cover["src"] if stall_cover else None,
                     "coverTitle": cover_title(stall_cover) if stall_cover else None,

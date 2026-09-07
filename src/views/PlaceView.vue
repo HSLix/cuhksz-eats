@@ -94,6 +94,9 @@ onMounted(async () => {
                 {{ dish.latestPrice }} 元 · {{ formatDate(dish.latestPriceCapturedAt) }}
               </span>
               <span v-else>暂无价格记录</span>
+              <span class="dish-card-action">
+                {{ dish.recordCount > 1 ? `共 ${dish.recordCount} 条记录 · 查看详情 →` : '查看详情 →' }}
+              </span>
             </div>
           </RouterLink>
         </div>

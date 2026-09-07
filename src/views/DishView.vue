@@ -5,6 +5,7 @@ import { loadContent } from '../content.js'
 
 const route = useRoute()
 const place = ref(null)
+const stall = ref(null)
 const dish = ref(null)
 const ready = ref(false)
 
@@ -24,7 +25,11 @@ function formatDate(value) {
 onMounted(async () => {
   const content = await loadContent()
   place.value = content.places.find((candidate) => candidate.slug === route.params.placeSlug)
-  dish.value = place.value?.dishes.find((candidate) => candidate.slug === route.params.dishSlug)
+  stall.value = route.params.stallSlug
+    ? place.value?.stalls.find((candidate) => candidate.slug === route.params.stallSlug)
+    : null
+  const owner = stall.value ?? place.value
+  dish.value = owner?.dishes.find((candidate) => candidate.slug === route.params.dishSlug)
   ready.value = true
 })
 </script>
@@ -32,7 +37,12 @@ onMounted(async () => {
 <template>
   <main class="content-page">
     <RouterLink
-      v-if="place"
+      v-if="stall"
+      class="back-link"
+      :to="{ name: 'stall', params: { placeSlug: place.slug, stallSlug: stall.slug } }"
+    >← 返回{{ stall.name }}</RouterLink>
+    <RouterLink
+      v-else-if="place"
       class="back-link"
       :to="{ name: 'place', params: { slug: place.slug } }"
     >← 返回{{ place.name }}</RouterLink>

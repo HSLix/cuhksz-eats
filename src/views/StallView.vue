@@ -11,8 +11,14 @@ const ready = ref(false)
 const photosByKind = computed(() => ({
   storefront: stall.value?.photos.filter((photo) => photo.kind === 'storefront') ?? [],
   menu: stall.value?.photos.filter((photo) => photo.kind === 'menu') ?? [],
-  rest: stall.value?.photos.filter((photo) => !['storefront', 'menu'].includes(photo.kind)) ?? [],
+  rest: stall.value?.photos.filter((photo) => photo.kind === 'photo') ?? [],
 }))
+
+function formatDate(value) {
+  if (!value) return '记录时间未知'
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number)
+  return `${year}年${month}月${day}日`
+}
 onMounted(async () => {
   const content = await loadContent()
   place.value = content.places.find((candidate) => candidate.slug === route.params.placeSlug)
@@ -37,6 +43,40 @@ onMounted(async () => {
       </header>
       <PhotoSection title="门面照片" :photos="photosByKind.storefront" />
       <PhotoSection title="菜单照片" :photos="photosByKind.menu" />
+      <section v-if="stall.dishes.length" class="content-section dish-section">
+        <div class="section-heading">
+          <h2>菜品</h2>
+          <span class="count">{{ stall.dishes.length }} 道</span>
+        </div>
+        <div class="dish-grid">
+          <RouterLink
+            v-for="dish in stall.dishes"
+            :key="dish.slug"
+            class="dish-card"
+            :to="{
+              name: 'stall-dish',
+              params: { placeSlug: place.slug, stallSlug: stall.slug, dishSlug: dish.slug },
+            }"
+          >
+            <img
+              :src="dish.cover"
+              :alt="dish.name"
+              :title="`最新记录：${formatDate(dish.coverCapturedAt)}`"
+              loading="lazy"
+            />
+            <div class="dish-card-body">
+              <strong>{{ dish.name }}</strong>
+              <span v-if="dish.latestPrice">
+                {{ dish.latestPrice }} 元 · {{ formatDate(dish.latestPriceCapturedAt) }}
+              </span>
+              <span v-else>暂无价格记录</span>
+              <span class="dish-card-action">
+                {{ dish.recordCount > 1 ? `共 ${dish.recordCount} 条记录 · 查看详情 →` : '查看详情 →' }}
+              </span>
+            </div>
+          </RouterLink>
+        </div>
+      </section>
       <PhotoSection title="其余照片" :photos="photosByKind.rest" />
     </template>
     <section v-else class="not-found"><h1>这个档口不存在</h1></section>

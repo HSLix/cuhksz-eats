@@ -140,6 +140,13 @@ main {
   background: #fff;
   color: inherit;
   text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dish-card:hover,
+.dish-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 0.8rem 2rem rgba(23, 63, 52, 0.12);
 }
 
 .dish-card img {
@@ -158,6 +165,22 @@ main {
 .dish-card-body span {
   color: #62716b;
   font-size: 0.9rem;
+}
+
+.dish-card-body .dish-card-action {
+  justify-self: start;
+  margin-top: 0.45rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: #173f34;
+  color: #fffdf8;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.dish-card:hover .dish-card-action,
+.dish-card:focus-visible .dish-card-action {
+  background: #285e4e;
 }
 
 .dish-history {

@@ -18,6 +18,11 @@ const router = createRouter({
       component: DishView,
     },
     { path: '/places/:placeSlug/stalls/:stallSlug', name: 'stall', component: StallView },
+    {
+      path: '/places/:placeSlug/stalls/:stallSlug/dishes/:dishSlug',
+      name: 'stall-dish',
+      component: DishView,
+    },
   ],
   scrollBehavior: () => ({ top: 0 }),
 })
