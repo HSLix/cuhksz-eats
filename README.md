@@ -56,6 +56,16 @@ uv run python manage.py dev
 npm run build
 ```
 
+## 匿名访问统计
+
+生产站点可使用 Umami Cloud 免费方案统计匿名汇总访问量。先在 Umami Cloud 中创建网站，再仅在部署环境中设置其公开 Website ID：
+
+```bash
+CUHKSZ_EATS_UMAMI_WEBSITE_ID=00000000-0000-0000-0000-000000000000 npm run build
+```
+
+只有格式有效的 Website ID 才会让生产构建加载 Umami Cloud 官方脚本。本地开发、缺少配置或配置格式无效时不会加载统计脚本，网站仍可正常浏览。Website ID 用于标识站点，并非账户凭据；Umami 登录信息、API 密钥及其他管理权限不得写入仓库或构建产物。本项目不接入广告统计、跨站行为追踪、Cookie 型用户画像或其他分析服务，也不提供公开统计看板、日报、通知或维护者报告页面。
+
 `publish` 目前已经接入与 `check`、`dev` 完全相同的前置检查；实际生成和更新 GitHub Pages 的发布阶段将在 Issue #10 实现。在此之前，校验通过后该命令会明确退出，不修改发布分支或远程站点：
 
 ```bash
