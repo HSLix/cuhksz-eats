@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PhotoSection from '../components/PhotoSection.vue'
+import ResponsiveImage from '../components/ResponsiveImage.vue'
 import { loadContent } from '../content.js'
 
 const route = useRoute()
@@ -21,8 +22,12 @@ function formatDate(value) {
 }
 onMounted(async () => {
   const content = await loadContent()
-  place.value = content.places.find((candidate) => candidate.slug === route.params.placeSlug)
-  stall.value = place.value?.stalls.find((candidate) => candidate.slug === route.params.stallSlug)
+  place.value = content.places.find(
+    (candidate) => candidate.slug === route.params.placeSlug || candidate.name === route.params.placeSlug,
+  )
+  stall.value = place.value?.stalls.find(
+    (candidate) => candidate.slug === route.params.stallSlug || candidate.name === route.params.stallSlug,
+  )
   ready.value = true
 })
 </script>
@@ -58,10 +63,11 @@ onMounted(async () => {
               params: { placeSlug: place.slug, stallSlug: stall.slug, dishSlug: dish.slug },
             }"
           >
-            <img
-              :src="dish.cover"
+            <ResponsiveImage
+              :photo="dish.coverImage"
               :alt="dish.name"
               :title="`最新记录：${formatDate(dish.coverCapturedAt)}`"
+              sizes="(max-width: 720px) calc(100vw - 2.5rem), 33vw"
               loading="lazy"
             />
             <div class="dish-card-body">

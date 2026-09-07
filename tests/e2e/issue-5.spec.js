@@ -109,6 +109,10 @@ test('dish detail shows every record field and sorts unknown times after dated r
   await expect(records.nth(4)).toContainText('记录时间未知')
   await expect(records.nth(4)).toContainText('30 元')
   await expect(records.nth(4)).toContainText('记录者随记：时间不明')
+
+  await page.getByRole('button', { name: '查看菜品照片：招牌饭，2026年9月4日' }).click()
+  await expect(page.getByRole('dialog', { name: '照片查看器' }).getByRole('img', { name: '招牌饭，2026年9月4日' }))
+    .toBeVisible()
 })
 
 test('same-name dishes stay independent across their real place and stall ownership', async ({ page }) => {

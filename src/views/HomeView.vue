@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import ResponsiveImage from '../components/ResponsiveImage.vue'
+import SiteSearch from '../components/SiteSearch.vue'
 import { loadContent } from '../content.js'
 
 const content = ref(null)
@@ -18,9 +20,12 @@ onMounted(async () => {
 <template>
   <main>
     <section class="hero">
-      <p class="eyebrow">学生维护 · 非官方网站</p>
+      <p class="eyebrow">非官方网站</p>
       <h1>CUHKSZ Eats</h1>
       <p class="hero-copy">用真实照片，认识校园里可以吃饭的地方。</p>
+      <p class="hero-disclaimer">CUHKSZ Eats 是由个人独立维护的非官方网站，与香港中文大学（深圳）及站内所列商户无隶属、授权或认可关系。内容仅记录特定时间的个人用餐与实拍信息，不代表校方或商户的实时菜单、价格及承诺，请以现场和官方信息为准。</p>
+      <SiteSearch v-if="content" :entries="content.searchIndex" />
+      <p class="freshness-notice">本站价格和菜单均为特定时间的历史实拍记录，不是当前价格、菜单或营业情况的承诺；请以档口现场和官方信息为准。</p>
     </section>
 
     <section class="directory" aria-labelledby="places-heading">
@@ -42,7 +47,13 @@ onMounted(async () => {
           class="place-card"
           :to="{ name: 'place', params: { slug: place.slug } }"
         >
-          <img v-if="place.cover" :src="place.cover" :alt="place.name" :title="place.coverTitle" />
+          <ResponsiveImage
+            v-if="place.coverImage"
+            :photo="place.coverImage"
+            :alt="place.name"
+            :title="place.coverTitle"
+            sizes="(max-width: 720px) calc(100vw - 2.5rem), 33vw"
+          />
           <div v-else class="cover-placeholder" role="img" :aria-label="`${place.name}暂无封面`">食</div>
           <div class="card-body">
             <h3>{{ place.name }}</h3>
@@ -65,14 +76,14 @@ onMounted(async () => {
       </div>
       <div v-if="content.campusSupplementary.photos.length" class="supplementary-loose photo-grid">
         <figure v-for="photo in content.campusSupplementary.photos" :key="photo.src" class="photo-card">
-          <img :src="photo.src" :alt="photo.title" loading="lazy" />
+          <ResponsiveImage :photo="photo" :alt="photo.title" sizes="(max-width: 720px) calc(100vw - 2.5rem), 33vw" loading="lazy" />
         </figure>
       </div>
       <article v-for="album in content.campusSupplementary.albums" :key="album.name" class="album">
         <h3>{{ album.name }}</h3>
         <div class="photo-grid">
           <figure v-for="photo in album.photos" :key="photo.src" class="photo-card">
-            <img :src="photo.src" :alt="photo.title" loading="lazy" />
+            <ResponsiveImage :photo="photo" :alt="photo.title" sizes="(max-width: 720px) calc(100vw - 2.5rem), 33vw" loading="lazy" />
           </figure>
         </div>
       </article>

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PhotoSection from '../components/PhotoSection.vue'
+import ResponsiveImage from '../components/ResponsiveImage.vue'
 import { loadContent } from '../content.js'
 
 const route = useRoute()
@@ -22,7 +23,9 @@ function formatDate(value) {
 
 onMounted(async () => {
   const content = await loadContent()
-  place.value = content.places.find((candidate) => candidate.slug === route.params.slug)
+  place.value = content.places.find(
+    (candidate) => candidate.slug === route.params.slug || candidate.name === route.params.slug,
+  )
   ready.value = true
 })
 </script>
@@ -55,11 +58,12 @@ onMounted(async () => {
             class="stall-card"
             :to="{ name: 'stall', params: { placeSlug: place.slug, stallSlug: stall.slug } }"
           >
-            <img
-              v-if="stall.cover"
-              :src="stall.cover"
+            <ResponsiveImage
+              v-if="stall.coverImage"
+              :photo="stall.coverImage"
               :alt="stall.name"
               :title="stall.coverTitle"
+              sizes="(max-width: 720px) calc(100vw - 2.5rem), 33vw"
               loading="lazy"
             />
             <div v-else class="stall-cover-placeholder" role="img" :aria-label="`${stall.name}暂无封面`">食</div>
@@ -82,10 +86,11 @@ onMounted(async () => {
             class="dish-card"
             :to="{ name: 'place-dish', params: { placeSlug: place.slug, dishSlug: dish.slug } }"
           >
-            <img
-              :src="dish.cover"
+            <ResponsiveImage
+              :photo="dish.coverImage"
               :alt="dish.name"
               :title="`最新记录：${formatDate(dish.coverCapturedAt)}`"
+              sizes="(max-width: 720px) calc(100vw - 2.5rem), 33vw"
               loading="lazy"
             />
             <div class="dish-card-body">

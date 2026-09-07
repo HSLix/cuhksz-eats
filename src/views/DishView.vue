@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import PhotoViewer from '../components/PhotoViewer.vue'
 import { loadContent } from '../content.js'
 
 const route = useRoute()
@@ -24,12 +25,18 @@ function formatDate(value) {
 
 onMounted(async () => {
   const content = await loadContent()
-  place.value = content.places.find((candidate) => candidate.slug === route.params.placeSlug)
+  place.value = content.places.find(
+    (candidate) => candidate.slug === route.params.placeSlug || candidate.name === route.params.placeSlug,
+  )
   stall.value = route.params.stallSlug
-    ? place.value?.stalls.find((candidate) => candidate.slug === route.params.stallSlug)
+    ? place.value?.stalls.find(
+      (candidate) => candidate.slug === route.params.stallSlug || candidate.name === route.params.stallSlug,
+    )
     : null
   const owner = stall.value ?? place.value
-  dish.value = owner?.dishes.find((candidate) => candidate.slug === route.params.dishSlug)
+  dish.value = owner?.dishes.find(
+    (candidate) => candidate.slug === route.params.dishSlug || candidate.name === route.params.dishSlug,
+  )
   ready.value = true
 })
 </script>
@@ -60,7 +67,12 @@ onMounted(async () => {
         </div>
         <div class="dish-history">
           <article v-for="record in records" :key="record.src" class="dish-record">
-            <img :src="record.src" :alt="`${dish.name}，${formatDate(record.capturedAt)}`" loading="lazy" />
+            <PhotoViewer
+              :photo="record"
+              :alt="`${dish.name}，${formatDate(record.capturedAt)}`"
+              :trigger-label="`查看菜品照片：${dish.name}，${formatDate(record.capturedAt)}`"
+              sizes="(max-width: 720px) calc(100vw - 2.5rem), 40vw"
+            />
             <div class="dish-record-body">
               <time v-if="record.capturedAt" :datetime="record.capturedAt">{{ formatDate(record.capturedAt) }}</time>
               <span v-else>记录时间未知</span>
