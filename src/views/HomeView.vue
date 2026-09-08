@@ -26,6 +26,12 @@ onMounted(async () => {
 <template>
   <main>
     <section class="hero">
+      <a
+        class="hero-project-link"
+        href="https://github.com/HSLix/cuhksz-eats"
+        target="_blank"
+        rel="noopener noreferrer"
+      >开源项目 · GitHub <span aria-hidden="true">↗</span></a>
       <p class="eyebrow">非官方网站</p>
       <h1>CUHKSZ Eats</h1>
       <p class="hero-copy">用真实照片，认识校园里可以吃饭的地方。</p>

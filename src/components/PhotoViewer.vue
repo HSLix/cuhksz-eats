@@ -57,7 +57,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       @click.self="closeViewer"
     >
       <button class="viewer-close" type="button" aria-label="关闭照片查看器" @click="closeViewer">×</button>
-      <p v-if="photo.kind === 'menu'" class="viewer-notice">菜单图片为档口公开展示区域拍摄的现场记录，仅用于帮助了解历史菜品与价格；菜单可能随时调整，请以档口现场信息为准。如相关权利人希望移除或更正，请通过页脚邮箱联系。</p>
       <ResponsiveImage :photo="photo" :alt="alt" :responsive="false" />
     </div>
   </Teleport>

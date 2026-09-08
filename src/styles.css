@@ -32,11 +32,42 @@ main {
 }
 
 .hero {
+  position: relative;
   padding: clamp(4rem, 12vw, 8rem) max(1.25rem, calc((100vw - 1120px) / 2));
   background:
     radial-gradient(circle at 82% 20%, rgba(225, 167, 72, 0.26), transparent 28rem),
     #173f34;
   color: #fffdf8;
+}
+
+.hero-project-link {
+  position: absolute;
+  top: 1.5rem;
+  right: max(1.25rem, calc((100vw - 1120px) / 2));
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(255, 253, 248, 0.28);
+  border-radius: 999px;
+  color: #dce7e1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.hero-project-link:hover,
+.hero-project-link:focus-visible {
+  border-color: rgba(255, 253, 248, 0.55);
+  background: rgba(255, 253, 248, 0.09);
+  color: #fffdf8;
+  outline: none;
+}
+
+.hero-project-link:focus-visible {
+  box-shadow: 0 0 0 3px #d99b39;
 }
 
 .hero h1,
@@ -786,6 +817,11 @@ main {
   .hero {
     padding-top: 3rem;
     padding-bottom: 4rem;
+  }
+
+  .hero-project-link {
+    position: static;
+    margin-bottom: 2rem;
   }
 
   .viewer-notice {

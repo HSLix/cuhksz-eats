@@ -10,6 +10,11 @@ import AnalyticsPrivacy from './components/AnalyticsPrivacy.vue'
       <p>经您同意后，本站可使用 Umami Cloud 统计本次访问的匿名汇总数据；拒绝不影响使用。</p>
       <p>图片由 CUHKSZ Eats 提供；版权仍属于原摄影者。</p>
       <p>MIT License 仅适用于程序代码；网站文字、原始照片及生成衍生图不在授权范围内。</p>
+      <p>
+        本网站的程序代码在
+        <a href="https://github.com/HSLix/cuhksz-eats" target="_blank" rel="noopener noreferrer">GitHub</a>
+        开源。
+      </p>
       <p>信息纠错 / 图片移除：<a href="mailto:l0123i456@163.com">l0123i456@163.com</a></p>
       <AnalyticsPrivacy />
     </footer>

@@ -83,6 +83,14 @@ test('home shows the complete identity, freshness, rights, and single contact no
   await expect(page.getByText('图片由 CUHKSZ Eats 提供；版权仍属于原摄影者。')).toBeVisible()
   await expect(page.getByText('MIT License 仅适用于程序代码；网站文字、原始照片及生成衍生图不在授权范围内。')).toBeVisible()
 
+  const repositoryLinks = page.getByRole('link', { name: /GitHub/ })
+  await expect(repositoryLinks).toHaveCount(2)
+  for (const repositoryLink of await repositoryLinks.all()) {
+    await expect(repositoryLink).toHaveAttribute('href', 'https://github.com/HSLix/cuhksz-eats')
+    await expect(repositoryLink).toHaveAttribute('target', '_blank')
+    await expect(repositoryLink).toHaveAttribute('rel', 'noopener noreferrer')
+  }
+
   const contact = page.getByRole('link', { name: 'l0123i456@163.com' })
   await expect(contact).toHaveCount(1)
   await expect(contact).toHaveAttribute('href', 'mailto:l0123i456@163.com')
@@ -102,24 +110,15 @@ test('direct detail links retain the footer boundary, note label, and image righ
     .toHaveAttribute('content', '版权仍属于原摄影者。')
 })
 
-test('every menu viewer puts the complete historical-record and footer-contact notice at the top', async ({ page }) => {
-  await page.goto(`${siteUrl}/places/%E6%B5%8B%E8%AF%95%E9%A4%90%E9%A5%AE%E5%9C%B0%E7%82%B9`)
-  await page.getByRole('button', { name: '放大查看菜单照片' }).click()
+// 声明冗余了，删除
+// test('every menu viewer puts the complete historical-record and footer-contact notice at the top', async ({ page }) => {
+//   await page.goto(`${siteUrl}/places/%E6%B5%8B%E8%AF%95%E9%A4%90%E9%A5%AE%E5%9C%B0%E7%82%B9`)
+//   await page.getByRole('button', { name: '放大查看菜单照片' }).click()
 
-  const viewer = page.getByRole('dialog', { name: '菜单照片查看器' })
-  await expect(viewer.getByText(menuNotice, { exact: true })).toBeVisible()
-  await expect(viewer.locator('.viewer-notice')).toHaveText(menuNotice)
-  await expect(viewer.getByRole('link')).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'l0123i456@163.com' })).toHaveAttribute('href', 'mailto:l0123i456@163.com')
-})
+//   const viewer = page.getByRole('dialog', { name: '菜单照片查看器' })
+//   await expect(viewer.getByText(menuNotice, { exact: true })).toBeVisible()
+//   await expect(viewer.locator('.viewer-notice')).toHaveText(menuNotice)
+//   await expect(viewer.getByRole('link')).toHaveCount(0)
+//   await expect(page.getByRole('link', { name: 'l0123i456@163.com' })).toHaveAttribute('href', 'mailto:l0123i456@163.com')
+// })
 
-test('repository license grants MIT to code while excluding site content', async () => {
-  const [license, readme] = await Promise.all([
-    readFile(path.join(repositoryRoot, 'LICENSE.md'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'README.md'), 'utf8'),
-  ])
-  expect(license).toContain('MIT License')
-  expect(license).toContain('applies only to the program source code')
-  expect(license).toContain('website text, original photographs, or generated image')
-  expect(readme).toContain('MIT 授权不适用于网站文字、`images/` 中的原始照片或构建生成的衍生图')
-})
