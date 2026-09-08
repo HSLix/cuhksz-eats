@@ -115,7 +115,9 @@ test('one public command publishes only a complete sanitized static site to gh-p
   test.slow()
   const fixture = await prepareRepository()
   try {
-    const result = run(path.join(repositoryRoot, '.venv', 'bin', 'python'), ['manage.py', 'publish'], {
+    const result = run(path.join(repositoryRoot, '.venv', 'bin', 'python'), [
+      'manage.py', 'publish', '--base-path', '/cuhksz-eats/',
+    ], {
       cwd: fixture.checkout,
       env: process.env,
     })

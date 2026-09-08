@@ -845,7 +845,21 @@ def run_dev(source: Path, host: str, port: int) -> int:
     return 0
 
 
-def run_publish(source: Path) -> int:
+def publish_base_path(value: str) -> str:
+    if not value.startswith("/") or not value.endswith("/"):
+        raise argparse.ArgumentTypeError("发布基路径必须以 / 开头并以 / 结尾")
+    return value
+
+
+def run_publish(source: Path, base_path: str | None = None) -> int:
+    configured_base_path = base_path or os.environ.get("CUHKSZ_EATS_BASE_PATH")
+    if configured_base_path:
+        try:
+            configured_base_path = publish_base_path(configured_base_path)
+        except argparse.ArgumentTypeError as error:
+            print(f"错误：{error}", file=sys.stderr)
+            return 1
+
     places = run_check(source)
     if places is None:
         return 1
@@ -907,7 +921,9 @@ def run_publish(source: Path) -> int:
 
     environment = os.environ.copy()
     environment["CUHKSZ_EATS_PUBLIC_DIR"] = str(PUBLISH_OUTPUT)
-    if not environment.get("CUHKSZ_EATS_BASE_PATH"):
+    if configured_base_path:
+        environment["CUHKSZ_EATS_BASE_PATH"] = configured_base_path
+    else:
         repository_name = remote_url.rstrip("/").rsplit("/", 1)[-1]
         if ":" in repository_name:
             repository_name = repository_name.rsplit(":", 1)[-1]
@@ -982,6 +998,11 @@ def create_parser() -> argparse.ArgumentParser:
 
     publish_parser = subparsers.add_parser("publish", help="检查内容并进入发布流程")
     publish_parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
+    publish_parser.add_argument(
+        "--base-path",
+        type=publish_base_path,
+        help="覆盖生产站点基路径（必须以 / 开头并以 / 结尾）",
+    )
     return parser
 
 
@@ -992,7 +1013,7 @@ def main() -> int:
         return 0 if run_check(source) is not None else 1
     if arguments.command == "dev":
         return run_dev(source, arguments.host, arguments.port)
-    return run_publish(source)
+    return run_publish(source, arguments.base_path)
 
 
 if __name__ == "__main__":

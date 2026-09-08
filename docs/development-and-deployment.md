@@ -87,11 +87,13 @@ uv run python manage.py publish
 
 `publish` 首先执行与 `check`、`dev` 完全相同的校验。错误会立即停止命令，不创建或替换 `images.zip`，也不生成或更新发布分支。校验通过后，命令计算 `images/` 中相对路径与文件内容的 SHA-256 树哈希：首次发布创建 `images.zip`，哈希变化时原子替换，未变化时保留现有 ZIP。随后命令重新生成派生索引、去敏响应式 WebP、静态详情入口与完整 Vue 生产构建，再用本次完整产物强制替换远程 `gh-pages`。每次发布提交都不继承旧发布提交，因此已删除的路线和图片不会残留，衍生图片历史也不会无限增长。
 
-GitHub 仓库应预先把 Pages 的发布来源设为 `gh-pages` 分支根目录。项目 Pages 的基路径会从 `origin` 仓库名自动推导，例如本仓库使用 `/cuhksz-eats/`；若使用自定义域名或其他路径，可在发布时显式设置 `CUHKSZ_EATS_BASE_PATH`，值必须包含开头和结尾的 `/`：
+GitHub 仓库应预先把 Pages 的发布来源设为 `gh-pages` 分支根目录。项目 Pages 的基路径会从 `origin` 仓库名自动推导，例如本仓库使用 `/cuhksz-eats/`，所以通常不需要额外配置。若使用自定义域名或其他路径，可通过跨平台的 `--base-path` 参数显式覆盖；值必须包含开头和结尾的 `/`：
 
 ```bash
-CUHKSZ_EATS_BASE_PATH=/ uv run python manage.py publish
+uv run python manage.py publish --base-path /
 ```
+
+该写法可直接用于 macOS、Linux、Windows PowerShell 和 Windows 命令提示符。为兼容已有发布流程，`CUHKSZ_EATS_BASE_PATH` 环境变量仍然有效；命令行参数的优先级更高。
 
 发布命令不会切换当前分支、提交 `main` 或把 `images/`、`images.zip`、`.generated/`、开发文件和私有配置放入 `gh-pages`。它只向名为 `origin` 的远程强制更新 `gh-pages`，因此运行前应仔细核对远程地址。Umami Website ID 如有配置，会沿用上节所述环境变量注入生产构建。
 
