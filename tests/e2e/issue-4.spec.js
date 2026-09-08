@@ -141,9 +141,9 @@ test('campus supplementary photos and albums stay secondary and outside the dini
 
   const supplementary = page.getByRole('region', { name: '校园补充' })
   await expect(supplementary).toBeVisible()
-  await expect(supplementary.getByRole('img', { name: 'IMG_20260907_080000.png' })).toBeVisible()
+  await expect(supplementary.getByRole('img', { name: '普通照片' }).first()).toBeVisible()
   await expect(supplementary.getByRole('heading', { name: '图书馆' })).toBeVisible()
-  await expect(supplementary.getByRole('img', { name: 'IMG_20260907_080100.png' })).toBeVisible()
+  await expect(supplementary.getByRole('img', { name: '普通照片' }).nth(1)).toBeVisible()
 })
 
 test('dining-place cards choose covers by the specified category and recency priority', async ({ page }) => {

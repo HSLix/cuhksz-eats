@@ -37,6 +37,17 @@ PRICE_PATTERN = re.compile(r"(?:0|[1-9]\d*)(?:\.\d{1,2})?\Z")
 CAMERA_TIME_PATTERN = re.compile(r"IMG_(\d{8})_(\d{6})", re.IGNORECASE)
 MMEXPORT_TIME_PATTERN = re.compile(r"mmexport(\d{13}|\d{10})(?!\d)", re.IGNORECASE)
 LEGACY_MARKERS = ("_菜单", "_门面", "－", "—", "–")
+PUBLIC_DATE_FIELDS = {
+    "capturedAt",
+    "latestCapturedAt",
+    "coverCapturedAt",
+    "latestPriceCapturedAt",
+}
+PUBLIC_PHOTO_TITLES = {
+    "photo": "普通照片",
+    "menu": "菜单照片",
+    "storefront": "门面照片",
+}
 
 register_heif_opener()
 
@@ -141,6 +152,27 @@ class ValidationResult:
     @property
     def warnings(self) -> tuple[Diagnostic, ...]:
         return tuple(item for item in self.diagnostics if item.severity == "warning")
+
+
+def publicize_content(value: object) -> None:
+    """Remove build-only photo metadata from the final public content tree."""
+    if isinstance(value, list):
+        for item in value:
+            publicize_content(item)
+        return
+
+    if not isinstance(value, dict):
+        return
+
+    photo_title = PUBLIC_PHOTO_TITLES.get(value.get("kind"))
+    if photo_title is not None and "title" in value:
+        value["title"] = photo_title
+
+    for key, item in value.items():
+        if key in PUBLIC_DATE_FIELDS and isinstance(item, str):
+            value[key] = item[:10]
+        else:
+            publicize_content(item)
 
 
 def relative_location(path: Path, source: Path) -> str:
@@ -779,6 +811,7 @@ def build_development_content(
             "albums": supplementary_albums,
         },
     }
+    publicize_content(content)
     (output / "content.json").write_text(
         json.dumps(content, ensure_ascii=False, indent=2),
         encoding="utf-8",

@@ -2,7 +2,6 @@
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  analyticsConfig,
   analyticsEnabled,
   getAnalyticsConsent,
   loadAnalytics,
@@ -103,7 +102,8 @@ function withdraw() {
             <div>
               <p><strong>处理者：</strong>CUHKSZ Eats 维护者；联系邮箱：<a href="mailto:l0123i456@163.com">l0123i456@163.com</a>。</p>
               <p><strong>境外接收方：</strong>Umami Software, Inc.；可通过其<a href="https://umami.is/privacy" target="_blank" rel="noreferrer">隐私政策与联系方式</a>了解详情。</p>
-              <p><strong>数据区域：</strong>{{ analyticsConfig.dataRegion }}；<strong>保存期限：</strong>{{ analyticsConfig.retention }}。</p>
+              <p><strong>数据区域：</strong>美国（Umami Cloud 账户的默认区域）。</p>
+              <p><strong>保存期限：</strong>Umami Cloud 未向本账户提供可查看或设置的固定保存期限。如需查询或请求删除已发送的数据，请联系站点维护者。</p>
               <p><strong>处理范围：</strong>仅页面访问量、页面路径、来源、粗粒度设备和地区统计。本站不调用 <code>umami.identify()</code>，不发送自定义事件或会话属性，也不公开统计看板。</p>
               <p><strong>撤回、查询或删除：</strong>您可在本弹窗撤回，撤回仅阻止后续统计，无法撤销此前已发送的数据。如需查询、投诉或请求删除，请联系站点维护者。</p>
             </div>

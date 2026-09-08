@@ -63,6 +63,7 @@ test.beforeAll(async () => {
   await addPhoto('B同刻地点/IMG_20260907_080000.png')
   await addPhoto('A未知地点/opaque.png')
   await addPhoto('B未知地点/unknown.png')
+  await addPhoto('mmexport1788523200000.png')
 
   await addPhoto('排序样例地点/IMG_20260901_090000-门面.png')
   await addPhoto('排序样例地点/IMG_20260903_090000-门面.png')
@@ -72,6 +73,8 @@ test.beforeAll(async () => {
   await addPhoto('排序样例地点/IMG_20260905_090000-较新菜-20.png')
   await addPhoto('排序样例地点/IMG_20260902_100000-较新菜-18.png')
   await addPhoto('排序样例地点/IMG_20260904_100000-较旧菜-12.png')
+  await addPhoto('排序样例地点/IMG_20260906_080000-同日菜-8.png')
+  await addPhoto('排序样例地点/IMG_20260906_090000-同日菜-9.png')
   await addPhoto('排序样例地点/opaquedish-未知菜-9.png')
   await addPhoto('排序样例地点/A同刻档口/IMG_20260906_080000.png')
   await addPhoto('排序样例地点/B同刻档口/IMG_20260906_080000-菜品-10.png')
@@ -129,7 +132,7 @@ test('place orders stalls, dishes, and each photo type newest first', async ({ p
     .toContainText('上次更新：2026年9月7日')
   await expect(page.getByRole('link', { name: /未知档口/ }))
     .toContainText('上次更新：时间未知')
-  await expect(page.locator('.dish-card strong')).toHaveText(['较新菜', '较旧菜', '未知菜'])
+  await expect(page.locator('.dish-card strong')).toHaveText(['同日菜', '较新菜', '较旧菜', '未知菜'])
 
   const storefronts = page.locator('section.content-section').filter({
     has: page.getByRole('heading', { name: '门面照片' }),
@@ -138,8 +141,8 @@ test('place orders stalls, dishes, and each photo type newest first', async ({ p
     (images) => images.map((image) => image.getAttribute('alt')),
   )).toEqual([
     '排序样例地点',
-    'IMG_20260901_090000-门面.png',
-    'opaquefront-门面.png',
+    '门面照片',
+    '门面照片',
   ])
 })
 
@@ -157,5 +160,47 @@ test('serialized same-type content is consistently newest first without filesyst
       return 0
     }))
   }
-  expect(place.dishes.map((dish) => dish.name)).toEqual(['较新菜', '较旧菜', '未知菜'])
+  expect(place.dishes.map((dish) => dish.name)).toEqual(['同日菜', '较新菜', '较旧菜', '未知菜'])
+  expect(place.dishes.find((dish) => dish.name === '同日菜').records.map((record) => record.price))
+    .toEqual(['8', '9'])
+})
+
+test('public content omits source names and precise capture times', async ({ page }) => {
+  await page.goto(siteUrl)
+  const content = await page.evaluate(async () => (await fetch('/content.json')).json())
+  const serialized = JSON.stringify(content)
+
+  expect(serialized).not.toMatch(/T\d{2}:\d{2}:\d{2}/)
+  expect(serialized).not.toContain('IMG_2026')
+  expect(serialized).not.toContain('mmexport178')
+
+  const publicDateFields = new Set([
+    'capturedAt',
+    'latestCapturedAt',
+    'coverCapturedAt',
+    'latestPriceCapturedAt',
+  ])
+  const photoTitles = []
+  function inspect(value) {
+    if (Array.isArray(value)) {
+      value.forEach(inspect)
+      return
+    }
+    if (!value || typeof value !== 'object') return
+    for (const [key, item] of Object.entries(value)) {
+      if (publicDateFields.has(key) && item !== null) {
+        expect(item).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      }
+      inspect(item)
+    }
+    if (['photo', 'menu', 'storefront', 'dish'].includes(value.kind)) {
+      photoTitles.push([value.kind, value.title])
+    }
+  }
+  inspect(content)
+
+  expect(photoTitles).toContainEqual(['photo', '普通照片'])
+  expect(photoTitles).toContainEqual(['menu', '菜单照片'])
+  expect(photoTitles).toContainEqual(['storefront', '门面照片'])
+  expect(photoTitles).toContainEqual(['dish', '较新菜'])
 })

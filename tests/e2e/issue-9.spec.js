@@ -92,11 +92,7 @@ test.afterAll(async () => {
 })
 
 test('configured production output waits for consent, then loads a minimized tracker', async ({ page }) => {
-  await build({
-    CUHKSZ_EATS_UMAMI_WEBSITE_ID: websiteId,
-    CUHKSZ_EATS_UMAMI_DATA_REGION: '欧盟',
-    CUHKSZ_EATS_UMAMI_RETENTION: '12个月',
-  })
+  await build({ CUHKSZ_EATS_UMAMI_WEBSITE_ID: websiteId })
   const { server, url } = await serveOutput()
   let analyticsRequests = 0
   await page.route('https://cloud.umami.is/script.js', async (route) => {
@@ -115,8 +111,8 @@ test('configured production output waits for consent, then loads a minimized tra
     expect(analyticsRequests).toBe(0)
 
     await dialog.getByText('查看完整隐私说明').click()
-    await expect(dialog.getByText(/数据区域：欧盟/)).toBeVisible()
-    await expect(dialog.getByText(/保存期限：12个月/)).toBeVisible()
+    await expect(dialog.getByText(/数据区域：美国/)).toBeVisible()
+    await expect(dialog.getByText(/未向本账户提供可查看或设置的固定保存期限/)).toBeVisible()
 
     await dialog.getByRole('button', { name: '同意本次访问' }).click()
     const script = page.locator(`script[data-website-id="${websiteId}"]`)

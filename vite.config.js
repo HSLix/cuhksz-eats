@@ -12,8 +12,6 @@ const umamiWebsiteId = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(con
 export default defineConfig(({ command }) => {
   const analyticsConfig = {
     websiteId: command === 'build' ? (umamiWebsiteId ?? '') : '',
-    dataRegion: process.env.CUHKSZ_EATS_UMAMI_DATA_REGION?.trim() || '尚未公开注明',
-    retention: process.env.CUHKSZ_EATS_UMAMI_RETENTION?.trim() || '尚未公开注明',
   }
 
   return {

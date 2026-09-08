@@ -243,9 +243,9 @@ test('public image output is responsive, WebP-only, sanitized, credited, and men
     await expect(viewer.getByRole('img', { name: '菜单照片' })).toHaveJSProperty('naturalWidth', 2400)
     await page.getByRole('button', { name: '关闭照片查看器' }).click()
 
-    await page.getByRole('button', { name: '查看照片：IMG_20260907_120001.png' }).click()
+    await page.getByRole('button', { name: '查看照片：普通照片' }).first().click()
     const photoViewer = page.getByRole('dialog', { name: '照片查看器' })
-    await expect(photoViewer.getByRole('img', { name: 'IMG_20260907_120001.png' })).toBeVisible()
+    await expect(photoViewer.getByRole('img', { name: '普通照片' })).toBeVisible()
     await page.getByRole('button', { name: '关闭照片查看器' }).click()
 
     await page.goto(dev.siteUrl)
