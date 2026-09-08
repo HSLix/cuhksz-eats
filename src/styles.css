@@ -83,13 +83,6 @@ main {
   margin-top: 2rem;
 }
 
-.freshness-notice {
-  width: min(42rem, 100%);
-  margin: 0.8rem 0 0;
-  color: #dce7e1;
-  font-size: 0.9rem;
-  line-height: 1.65;
-}
 
 .site-search label {
   display: block;
@@ -486,12 +479,14 @@ main {
 
 .stall-card-body {
   display: flex;
+  align-items: start;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.9rem 1rem;
 }
 
-.stall-card span {
+.stall-card span,
+.stall-card time {
   color: #62716b;
 }
 
@@ -568,7 +563,21 @@ main {
   font-size: 1.15rem;
 }
 
-.card-body span {
+.card-summary {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.card-summary time,
+.card-summary > span {
+  color: #62716b;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.card-body .card-action,
+.stall-card-body .card-action {
   color: #62716b;
   font-size: 0.86rem;
   white-space: nowrap;

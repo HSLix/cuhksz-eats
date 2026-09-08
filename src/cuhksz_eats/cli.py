@@ -8,7 +8,11 @@ import datetime as dt
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
+import zipfile
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -16,12 +20,17 @@ from pathlib import Path
 from PIL import Image, UnidentifiedImageError
 from pillow_heif import register_heif_opener
 from src.cuhksz_eats.image_derivatives import ImageDerivativeCache
+from src.cuhksz_eats.source_archive import update_source_archive
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE = REPOSITORY_ROOT / "images"
 DEVELOPMENT_OUTPUT = REPOSITORY_ROOT / ".generated" / "dev" / "public"
 DEVELOPMENT_IMAGE_CACHE = REPOSITORY_ROOT / ".generated" / "cache" / "images"
+PUBLISH_OUTPUT = REPOSITORY_ROOT / ".generated" / "publish" / "public"
+PUBLISH_IMAGE_CACHE = REPOSITORY_ROOT / ".generated" / "cache" / "images"
+PRODUCTION_BUILD = REPOSITORY_ROOT / "dist"
+SOURCE_ARCHIVE = REPOSITORY_ROOT / "images.zip"
 SUPPORTED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 IGNORED_NAMES = {".ds_store", "thumbs.db", "desktop.ini"}
 PRICE_PATTERN = re.compile(r"(?:0|[1-9]\d*)(?:\.\d{1,2})?\Z")
@@ -517,6 +526,27 @@ def build_development_content(
             ),
         )
 
+    def latest_time(items: list[dict[str, object]]) -> str | None:
+        return max(
+            (str(item["capturedAt"]) for item in items if item["capturedAt"]),
+            default=None,
+        )
+
+    def newest_first(
+        items: list[dict[str, object]],
+        time_key,
+        secondary_key,
+    ) -> list[dict[str, object]]:
+        stable_items = sorted(items, key=secondary_key)
+        return sorted(stable_items, key=lambda item: time_key(item) or "", reverse=True)
+
+    def sort_photos(photos: list[dict[str, object]]) -> list[dict[str, object]]:
+        return newest_first(
+            photos,
+            lambda photo: photo["capturedAt"],
+            lambda photo: str(photo["src"]),
+        )
+
     def cover_title(photo: dict[str, object]) -> str | None:
         labels = {
             "storefront": "门面照片",
@@ -570,14 +600,22 @@ def build_development_content(
                     "recordCount": len(records),
                 }
             )
-        return sorted(dishes, key=lambda dish: str(dish["name"]))
+        return newest_first(
+            dishes,
+            lambda dish: dish["coverCapturedAt"],
+            lambda dish: str(dish["name"]),
+        )
 
     serialized_places = []
     for place in places:
-        serialized_photos = [serialize_photo(photo) for photo in place.photos]
+        serialized_photos = sort_photos(
+            [serialize_photo(photo) for photo in place.photos]
+        )
         serialized_stalls = []
         for stall in place.stalls:
-            stall_photos = [serialize_photo(photo) for photo in stall.photos]
+            stall_photos = sort_photos(
+                [serialize_photo(photo) for photo in stall.photos]
+            )
             stall_cover = None
             for kind in ("storefront", "menu"):
                 candidates = [photo for photo in stall_photos if photo["kind"] == kind]
@@ -602,8 +640,14 @@ def build_development_content(
                     "cover": stall_cover["src"] if stall_cover else None,
                     "coverImage": stall_cover,
                     "coverTitle": cover_title(stall_cover) if stall_cover else None,
+                    "latestCapturedAt": latest_time(stall_photos),
                 }
             )
+        serialized_stalls = newest_first(
+            serialized_stalls,
+            lambda stall: stall["latestCapturedAt"],
+            lambda stall: str(stall["name"]),
+        )
         cover_photo = None
         for kind in ("storefront", "dish", "photo"):
             candidates = [photo for photo in serialized_photos if photo["kind"] == kind]
@@ -623,33 +667,60 @@ def build_development_content(
                 "dishes": serialize_dishes(serialized_photos),
                 "stalls": serialized_stalls,
                 "photoCount": len(place.all_photos),
+                "latestCapturedAt": latest_time(
+                    serialized_photos
+                    + [
+                        photo
+                        for stall in serialized_stalls
+                        for photo in stall["photos"]
+                    ]
+                ),
             }
         )
 
-    supplementary_photos = [
-        serialize_photo(Photo(photo, photo.name))
-        for photo in sorted(source.iterdir())
-        if photo.is_file()
-        and not ignored_path(photo)
-        and photo.suffix.lower() in SUPPORTED_IMAGE_SUFFIXES
-    ]
+    serialized_places = newest_first(
+        serialized_places,
+        lambda place: place["latestCapturedAt"],
+        lambda place: str(place["name"]),
+    )
+
+    supplementary_photos = sort_photos(
+        [
+            serialize_photo(Photo(photo, photo.name))
+            for photo in sorted(source.iterdir())
+            if photo.is_file()
+            and not ignored_path(photo)
+            and photo.suffix.lower() in SUPPORTED_IMAGE_SUFFIXES
+        ]
+    )
     supplementary_root = source / "_校园补充"
     supplementary_albums = []
     if supplementary_root.is_dir():
         for album_directory in sorted(supplementary_root.iterdir()):
             if not album_directory.is_dir():
                 continue
-            album_photos = [
-                serialize_photo(Photo(photo, photo.name))
-                for photo in sorted(album_directory.iterdir())
-                if photo.is_file()
-                and not ignored_path(photo)
-                and photo.suffix.lower() in SUPPORTED_IMAGE_SUFFIXES
-            ]
+            album_photos = sort_photos(
+                [
+                    serialize_photo(Photo(photo, photo.name))
+                    for photo in sorted(album_directory.iterdir())
+                    if photo.is_file()
+                    and not ignored_path(photo)
+                    and photo.suffix.lower() in SUPPORTED_IMAGE_SUFFIXES
+                ]
+            )
             if album_photos:
                 supplementary_albums.append(
-                    {"name": album_directory.name, "photos": album_photos}
+                    {
+                        "name": album_directory.name,
+                        "photos": album_photos,
+                        "latestCapturedAt": latest_time(album_photos),
+                    }
                 )
+    supplementary_albums = newest_first(
+        supplementary_albums,
+        lambda album: album["latestCapturedAt"],
+        lambda album: str(album["name"]),
+    )
 
     search_index = []
     for place in serialized_places:
@@ -746,9 +817,122 @@ def run_publish(source: Path) -> int:
     if places is None:
         return 1
 
-    print("已通过校验，准备发布。")
-    print("发布阶段将在 Issue #10 实现；当前未修改发布分支或远程站点。", file=sys.stderr)
-    return 1
+    try:
+        archive = update_source_archive(source, SOURCE_ARCHIVE)
+    except (OSError, RuntimeError, zipfile.LargeZipFile) as error:
+        print(f"错误：无法更新本地原图归档：{error}", file=sys.stderr)
+        return 1
+    print(f"内容哈希：sha256:{archive.digest}")
+    archive_messages = {
+        "created": "已创建本地原图归档：images.zip",
+        "updated": "已更新本地原图归档：images.zip",
+        "unchanged": "原图内容未变化，保留本地归档：images.zip",
+    }
+    print(archive_messages[archive.status])
+
+    npm = shutil.which("npm")
+    git = shutil.which("git")
+    if npm is None:
+        print("错误：找不到 npm，请先安装 Node.js 20+。", file=sys.stderr)
+        return 1
+    if git is None:
+        print("错误：找不到 Git，无法更新 gh-pages。", file=sys.stderr)
+        return 1
+
+    try:
+        repository_check = subprocess.run(
+            [git, "rev-parse", "--show-toplevel"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        if Path(repository_check.stdout.strip()).resolve() != REPOSITORY_ROOT:
+            raise RuntimeError("manage.py 必须从项目 Git 仓库运行")
+        remote_url = subprocess.run(
+            [git, "remote", "get-url", "--push", "origin"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (subprocess.CalledProcessError, RuntimeError) as error:
+        detail = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) and error.stderr else str(error)
+        print(f"错误：发布仓库配置无效：{detail}", file=sys.stderr)
+        return 1
+
+    print("已通过校验，正在生成去敏公开内容。")
+    shutil.rmtree(PUBLISH_OUTPUT, ignore_errors=True)
+    generated, reused = build_development_content(
+        places,
+        source,
+        PUBLISH_OUTPUT,
+        PUBLISH_IMAGE_CACHE,
+    )
+    (PUBLISH_OUTPUT / ".nojekyll").touch()
+    print(f"图片派生：新生成 {generated} 个，复用 {reused} 个。")
+
+    environment = os.environ.copy()
+    environment["CUHKSZ_EATS_PUBLIC_DIR"] = str(PUBLISH_OUTPUT)
+    if not environment.get("CUHKSZ_EATS_BASE_PATH"):
+        repository_name = remote_url.rstrip("/").rsplit("/", 1)[-1]
+        if ":" in repository_name:
+            repository_name = repository_name.rsplit(":", 1)[-1]
+        if repository_name.endswith(".git"):
+            repository_name = repository_name[:-4]
+        environment["CUHKSZ_EATS_BASE_PATH"] = (
+            "/" if repository_name.lower().endswith(".github.io") else f"/{repository_name}/"
+        )
+    try:
+        subprocess.run(
+            [npm, "run", "build"],
+            cwd=REPOSITORY_ROOT,
+            env=environment,
+            check=True,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="cuhksz-eats-publish-") as temporary:
+            git_environment = environment.copy()
+            git_environment["GIT_INDEX_FILE"] = str(Path(temporary) / "index")
+            git_base = [
+                git,
+                f"--git-dir={REPOSITORY_ROOT / '.git'}",
+                f"--work-tree={PRODUCTION_BUILD}",
+            ]
+            subprocess.run(
+                [*git_base, "add", "--all", "--force", "."],
+                cwd=REPOSITORY_ROOT,
+                env=git_environment,
+                check=True,
+            )
+            tree = subprocess.run(
+                [*git_base, "write-tree"],
+                cwd=REPOSITORY_ROOT,
+                env=git_environment,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            commit = subprocess.run(
+                [git, "commit-tree", tree, "-m", "Deploy CUHKSZ Eats"],
+                cwd=REPOSITORY_ROOT,
+                env=git_environment,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            subprocess.run(
+                [git, "push", "--force", "origin", f"{commit}:refs/heads/gh-pages"],
+                cwd=REPOSITORY_ROOT,
+                env=git_environment,
+                check=True,
+            )
+    except subprocess.CalledProcessError as error:
+        print(f"错误：发布失败（命令退出码 {error.returncode}），gh-pages 未完成更新。", file=sys.stderr)
+        return 1
+
+    print("发布完成：gh-pages 已替换为本次完整静态站点。")
+    return 0
 
 
 def create_parser() -> argparse.ArgumentParser:

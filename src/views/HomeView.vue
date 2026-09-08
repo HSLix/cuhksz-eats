@@ -8,6 +8,12 @@ import { loadContent } from '../content.js'
 const content = ref(null)
 const error = ref('')
 
+function formatDate(value) {
+  if (!value) return '时间未知'
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number)
+  return `${year}年${month}月${day}日`
+}
+
 onMounted(async () => {
   try {
     content.value = await loadContent()
@@ -25,7 +31,6 @@ onMounted(async () => {
       <p class="hero-copy">用真实照片，认识校园里可以吃饭的地方。</p>
       <p class="hero-disclaimer">CUHKSZ Eats 是由个人独立维护的非官方网站，与香港中文大学（深圳）及站内所列商户无隶属、授权或认可关系。内容仅记录特定时间的个人用餐与实拍信息，不代表校方或商户的实时菜单、价格及承诺，请以现场和官方信息为准。</p>
       <SiteSearch v-if="content" :entries="content.searchIndex" />
-      <p class="freshness-notice">本站价格和菜单均为特定时间的历史实拍记录，不是当前价格、菜单或营业情况的承诺；请以档口现场和官方信息为准。</p>
     </section>
 
     <section class="directory" aria-labelledby="places-heading">
@@ -56,8 +61,14 @@ onMounted(async () => {
           />
           <div v-else class="cover-placeholder" role="img" :aria-label="`${place.name}暂无封面`">食</div>
           <div class="card-body">
-            <h3>{{ place.name }}</h3>
-            <span>查看地点 <span aria-hidden="true">→</span></span>
+            <div class="card-summary">
+              <h3>{{ place.name }}</h3>
+              <time v-if="place.latestCapturedAt" :datetime="place.latestCapturedAt">
+                上次更新：{{ formatDate(place.latestCapturedAt) }}
+              </time>
+              <span v-else>上次更新：时间未知</span>
+            </div>
+            <span class="card-action">查看地点 <span aria-hidden="true">→</span></span>
           </div>
         </RouterLink>
       </div>

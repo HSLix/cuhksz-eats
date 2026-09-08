@@ -66,11 +66,28 @@ CUHKSZ_EATS_UMAMI_WEBSITE_ID=00000000-0000-0000-0000-000000000000 npm run build
 
 只有格式有效的 Website ID 才会让生产构建加载 Umami Cloud 官方脚本。本地开发、缺少配置或配置格式无效时不会加载统计脚本，网站仍可正常浏览。Website ID 用于标识站点，并非账户凭据；Umami 登录信息、API 密钥及其他管理权限不得写入仓库或构建产物。本项目不接入广告统计、跨站行为追踪、Cookie 型用户画像或其他分析服务，也不提供公开统计看板、日报、通知或维护者报告页面。
 
-`publish` 目前已经接入与 `check`、`dev` 完全相同的前置检查；实际生成和更新 GitHub Pages 的发布阶段将在 Issue #10 实现。在此之前，校验通过后该命令会明确退出，不修改发布分支或远程站点：
+## 发布到 GitHub Pages
+
+日常更新使用以下完整流程：
+
+1. 把原图添加到本地 `images/`。发布命令会在项目根目录维护一个被 Git 忽略的 `images.zip` 本机归档；仍应把原图或该 ZIP 复制到独立磁盘或可信的私有备份服务，因为同一台电脑上的 ZIP 不构成独立备份。Git、GitHub 和 `gh-pages` 都不是原图备份。
+2. 运行 `uv run python manage.py check`，按诊断手工修正阻塞错误。
+3. 运行 `uv run python manage.py dev`，在浏览器中检查内容归属、文字和照片；确认后停止预览。
+4. 确认当前仓库的 `origin` 指向要发布的 GitHub 仓库，然后只运行一次：
 
 ```bash
 uv run python manage.py publish
 ```
+
+`publish` 首先执行与 `check`、`dev` 完全相同的校验。错误会立即停止命令，不创建或替换 `images.zip`，也不生成或更新发布分支。校验通过后，命令计算 `images/` 中相对路径与文件内容的 SHA-256 树哈希：首次发布创建 `images.zip`，哈希变化时原子替换，未变化时保留现有 ZIP。随后命令重新生成派生索引、去敏响应式 WebP、静态详情入口与完整 Vue 生产构建，再用本次完整产物强制替换远程 `gh-pages`。每次发布提交都不继承旧发布提交，因此已删除的路线和图片不会残留，衍生图片历史也不会无限增长。
+
+GitHub 仓库应预先把 Pages 的发布来源设为 `gh-pages` 分支根目录。项目 Pages 的基路径会从 `origin` 仓库名自动推导，例如本仓库使用 `/cuhksz-eats/`；若使用自定义域名或其他路径，可在发布时显式设置 `CUHKSZ_EATS_BASE_PATH`，值必须包含开头和结尾的 `/`：
+
+```bash
+CUHKSZ_EATS_BASE_PATH=/ uv run python manage.py publish
+```
+
+发布命令不会切换当前分支、提交 `main` 或把 `images/`、`images.zip`、`.generated/`、开发文件和私有配置放入 `gh-pages`。它只向名为 `origin` 的远程强制更新 `gh-pages`，因此运行前应仔细核对远程地址。Umami Website ID 如有配置，会沿用上节所述环境变量注入生产构建。
 
 ## 验收
 

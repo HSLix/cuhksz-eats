@@ -11,6 +11,7 @@ defineProps({
 })
 
 const attrs = useAttrs()
+const publicUrl = (source) => `${import.meta.env.BASE_URL}${source.replace(/^\//, '')}`
 </script>
 
 <template>
@@ -18,8 +19,8 @@ const attrs = useAttrs()
     <img
       v-bind="attrs"
       itemprop="contentUrl"
-      :src="photo.src"
-      :srcset="responsive ? photo.srcset : undefined"
+      :src="publicUrl(photo.src)"
+      :srcset="responsive ? photo.sources.map((source) => `${publicUrl(source.src)} ${source.width}w`).join(', ') : undefined"
       :sizes="responsive ? sizes : undefined"
       :width="photo.width"
       :height="photo.height"

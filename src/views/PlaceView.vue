@@ -68,8 +68,14 @@ onMounted(async () => {
             />
             <div v-else class="stall-cover-placeholder" role="img" :aria-label="`${stall.name}暂无封面`">食</div>
             <div class="stall-card-body">
-              <strong>{{ stall.name }}</strong>
-              <span>{{ stall.photoCount }} 张 →</span>
+              <div class="card-summary">
+                <strong>{{ stall.name }}</strong>
+                <time v-if="stall.latestCapturedAt" :datetime="stall.latestCapturedAt">
+                  上次更新：{{ formatDate(stall.latestCapturedAt) }}
+                </time>
+                <span v-else>上次更新：时间未知</span>
+              </div>
+              <span class="card-action">{{ stall.photoCount }} 张 →</span>
             </div>
           </RouterLink>
         </div>

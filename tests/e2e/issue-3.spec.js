@@ -176,7 +176,7 @@ test('every maintenance command reports the same blocking diagnostics and stops 
   }
 })
 
-test('warnings are actionable and do not block check, preview, or the publish gate', async () => {
+test('warnings are actionable and do not block check or preview', async () => {
   const source = await mkdtemp(path.join(tmpdir(), 'cuhksz-eats-issue-3-warnings-'))
   let dev
   try {
@@ -201,11 +201,6 @@ test('warnings are actionable and do not block check, preview, or the publish ga
     await stopDev(dev.child)
     dev = undefined
 
-    const publish = run('publish', source)
-    expect(publish.status).toBe(1)
-    expect(publish.stderr).toContain('警告：')
-    expect(publish.stdout).toContain('已通过校验，准备发布')
-    expect(publish.stderr).toContain('发布阶段将在 Issue #10 实现')
     expect(await sourceDigest(source)).toBe(before)
   } finally {
     if (dev) await stopDev(dev.child)

@@ -1,5 +1,6 @@
 # Local source images must never be committed.
 /images/
+/images.zip
 
 # macOS metadata
 .DS_Store

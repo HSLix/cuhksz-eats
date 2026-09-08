@@ -8,7 +8,7 @@ import StallView from './views/StallView.vue'
 import './styles.css'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: HomeView },
     { path: '/places/:slug', name: 'place', component: PlaceView },

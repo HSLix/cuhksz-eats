@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import path from 'node:path'
 
 const publicDirectory = process.env.CUHKSZ_EATS_PUBLIC_DIR ?? '.generated/dev/public'
+const basePath = process.env.CUHKSZ_EATS_BASE_PATH ?? '/'
 const configuredUmamiWebsiteId = process.env.CUHKSZ_EATS_UMAMI_WEBSITE_ID?.trim()
 const umamiWebsiteId = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(configuredUmamiWebsiteId ?? '')
   ? configuredUmamiWebsiteId
@@ -29,6 +30,7 @@ function umamiCloudPlugin() {
 }
 
 export default defineConfig(({ command }) => ({
+  base: basePath,
   plugins: [
     vue(),
     ...(command === 'build' && umamiWebsiteId ? [umamiCloudPlugin()] : []),

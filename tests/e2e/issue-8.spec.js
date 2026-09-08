@@ -80,8 +80,6 @@ test('home shows the complete identity, freshness, rights, and single contact no
 
   await expect(page.locator('.hero').getByText(disclaimer, { exact: true })).toBeVisible()
   await expect(page.locator('.site-footer').getByText(disclaimer, { exact: true })).toBeVisible()
-  await expect(page.locator('.freshness-notice')).toContainText('历史实拍记录')
-  await expect(page.locator('.freshness-notice')).toContainText('不是当前价格、菜单或营业情况的承诺')
   await expect(page.getByText('图片由 CUHKSZ Eats 提供；版权仍属于原摄影者。')).toBeVisible()
   await expect(page.getByText('MIT License 仅适用于程序代码；网站文字、原始照片及生成衍生图不在授权范围内。')).toBeVisible()
 
