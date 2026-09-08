@@ -7,7 +7,6 @@
 
 .planning
 
-CONTEXT.md
 
 # Design/ADR documents under docs/ are private working notes.
 # Listed individually on purpose (no wildcards).

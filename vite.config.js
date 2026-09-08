@@ -9,31 +9,19 @@ const umamiWebsiteId = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(con
   ? configuredUmamiWebsiteId
   : undefined
 
-function umamiCloudPlugin() {
+export default defineConfig(({ command }) => {
+  const analyticsConfig = {
+    websiteId: command === 'build' ? (umamiWebsiteId ?? '') : '',
+    dataRegion: process.env.CUHKSZ_EATS_UMAMI_DATA_REGION?.trim() || '尚未公开注明',
+    retention: process.env.CUHKSZ_EATS_UMAMI_RETENTION?.trim() || '尚未公开注明',
+  }
+
   return {
-    name: 'umami-cloud',
-    transformIndexHtml: {
-      order: 'post',
-      handler() {
-        return [{
-          tag: 'script',
-          attrs: {
-            defer: true,
-            src: 'https://cloud.umami.is/script.js',
-            'data-website-id': umamiWebsiteId,
-          },
-          injectTo: 'head',
-        }]
-      },
+    base: basePath,
+    plugins: [vue()],
+    publicDir: path.resolve(publicDirectory),
+    define: {
+      __UMAMI_CONFIG__: JSON.stringify(analyticsConfig),
     },
   }
-}
-
-export default defineConfig(({ command }) => ({
-  base: basePath,
-  plugins: [
-    vue(),
-    ...(command === 'build' && umamiWebsiteId ? [umamiCloudPlugin()] : []),
-  ],
-  publicDir: path.resolve(publicDirectory),
-}))
+})

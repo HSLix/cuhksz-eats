@@ -91,22 +91,74 @@ test.afterAll(async () => {
   if (publicDirectory) await rm(publicDirectory, { recursive: true, force: true })
 })
 
-test('configured production output sends anonymous aggregate visits and discloses their purpose', async ({ page }) => {
+test('configured production output waits for consent, then loads a minimized tracker', async ({ page }) => {
+  await build({
+    CUHKSZ_EATS_UMAMI_WEBSITE_ID: websiteId,
+    CUHKSZ_EATS_UMAMI_DATA_REGION: '欧盟',
+    CUHKSZ_EATS_UMAMI_RETENTION: '12个月',
+  })
+  const { server, url } = await serveOutput()
+  let analyticsRequests = 0
+  await page.route('https://cloud.umami.is/script.js', async (route) => {
+    analyticsRequests += 1
+    await route.fulfill({
+      contentType: 'text/javascript',
+      body: 'window.umami = { track: () => { window.__umamiPageviews = (window.__umamiPageviews || 0) + 1 } }',
+    })
+  })
+
+  try {
+    await page.goto(url)
+    const dialog = page.getByRole('dialog', { name: '隐私统计说明' })
+    await expect(dialog).toBeVisible()
+    await expect(page.locator('script[src="https://cloud.umami.is/script.js"]')).toHaveCount(0)
+    expect(analyticsRequests).toBe(0)
+
+    await dialog.getByText('查看完整隐私说明').click()
+    await expect(dialog.getByText(/数据区域：欧盟/)).toBeVisible()
+    await expect(dialog.getByText(/保存期限：12个月/)).toBeVisible()
+
+    await dialog.getByRole('button', { name: '同意本次访问' }).click()
+    const script = page.locator(`script[data-website-id="${websiteId}"]`)
+    await expect(script).toHaveAttribute('src', 'https://cloud.umami.is/script.js')
+    await expect(script).toHaveAttribute('data-auto-pageview', 'false')
+    await expect(script).toHaveAttribute('data-exclude-search', 'true')
+    await expect(script).toHaveAttribute('data-exclude-hash', 'true')
+    await expect(script).toHaveAttribute('data-do-not-track', 'true')
+    await expect(script).toHaveAttribute('data-before-send', 'cuhkszEatsUmamiBeforeSend')
+    await expect.poll(() => page.evaluate(() => window.__umamiPageviews)).toBe(1)
+    expect(analyticsRequests).toBe(1)
+
+    await page.getByRole('button', { name: '统计与隐私设置' }).click()
+    await page.getByRole('button', { name: '撤回并停止后续统计' }).click()
+    await page.reload()
+    await expect(page.locator('script[src="https://cloud.umami.is/script.js"]')).toHaveCount(0)
+    await expect(page.getByRole('dialog', { name: '隐私统计说明' })).toHaveCount(0)
+    expect(analyticsRequests).toBe(1)
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+  }
+})
+
+test('rejecting analytics stores the choice only for the current tab and never requests Umami', async ({ page }) => {
   await build({ CUHKSZ_EATS_UMAMI_WEBSITE_ID: websiteId })
   const { server, url } = await serveOutput()
   let analyticsRequests = 0
   await page.route('https://cloud.umami.is/script.js', async (route) => {
     analyticsRequests += 1
-    await route.fulfill({ contentType: 'text/javascript', body: '' })
+    await route.abort()
   })
 
   try {
     await page.goto(url)
-    await expect(page.locator(`script[data-website-id="${websiteId}"]`))
-      .toHaveAttribute('src', 'https://cloud.umami.is/script.js')
-    await expect(page.getByText('本站使用 Umami Cloud 统计匿名汇总访问量，用于了解整体使用情况和改进网站；不用于广告统计、跨站追踪或 Cookie 型用户画像。'))
-      .toBeVisible()
-    expect(analyticsRequests).toBe(1)
+    await page.getByRole('button', { name: '关闭并不同意统计' }).click()
+    await page.reload()
+    await expect(page.getByRole('dialog', { name: '隐私统计说明' })).toHaveCount(0)
+    await expect(page.locator('script[src="https://cloud.umami.is/script.js"]')).toHaveCount(0)
+    expect(analyticsRequests).toBe(0)
+
+    await page.getByRole('button', { name: '统计与隐私设置' }).click()
+    await expect(page.getByText('您已拒绝本次访问的统计，可在此重新同意。')).toBeVisible()
   } finally {
     await new Promise((resolve) => server.close(resolve))
   }
@@ -133,7 +185,7 @@ test('production output without configuration remains browsable and does not loa
     await page.goto(url)
     await expect(page.getByRole('heading', { name: 'CUHKSZ Eats' })).toBeVisible()
     await expect(page.locator('script[src="https://cloud.umami.is/script.js"]')).toHaveCount(0)
-    await expect(page.getByText('本站使用 Umami Cloud 统计匿名汇总访问量，用于了解整体使用情况和改进网站；不用于广告统计、跨站追踪或 Cookie 型用户画像。'))
+    await expect(page.getByText('经您同意后，本站可使用 Umami Cloud 统计本次访问的匿名汇总数据；拒绝不影响使用。'))
       .toBeVisible()
   } finally {
     await new Promise((resolve) => server.close(resolve))
