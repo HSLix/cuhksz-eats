@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PhotoSection from '../components/PhotoSection.vue'
 import ResponsiveImage from '../components/ResponsiveImage.vue'
-import { loadContent } from '../content.js'
+import { loadContent, previewNote } from '../content.js'
 
 const route = useRoute()
 const place = ref(null)
@@ -105,6 +105,9 @@ onMounted(async () => {
                 {{ dish.latestPrice }} 元 · {{ formatDate(dish.latestPriceCapturedAt) }}
               </span>
               <span v-else>暂无价格记录</span>
+              <span v-if="dish.coverImage.note">
+                随记：{{ previewNote(dish.coverImage.note) }}
+              </span>
               <span class="dish-card-action">
                 {{ dish.recordCount > 1 ? `共 ${dish.recordCount} 条记录 · 查看详情 →` : '查看详情 →' }}
               </span>

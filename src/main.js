@@ -1,11 +1,14 @@
-import { createApp } from 'vue'
+import { createApp, nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
+import { loadContent } from './content.js'
 import DishView from './views/DishView.vue'
 import HomeView from './views/HomeView.vue'
 import PlaceView from './views/PlaceView.vue'
 import StallView from './views/StallView.vue'
 import './styles.css'
+
+const scrollPositions = new Map()
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,7 +27,17 @@ const router = createRouter({
       component: DishView,
     },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  async scrollBehavior(to, from, savedPosition) {
+    const position = savedPosition ?? scrollPositions.get(to.fullPath)
+    if (!position) return { top: 0 }
+    await loadContent()
+    await nextTick()
+    return position
+  },
+})
+
+router.beforeEach((to, from) => {
+  if (from.name) scrollPositions.set(from.fullPath, { left: window.scrollX, top: window.scrollY })
 })
 
 createApp(App).use(router).mount('#app')

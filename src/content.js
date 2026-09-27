@@ -9,3 +9,8 @@ export function loadContent() {
   }
   return contentPromise
 }
+
+export function previewNote(note) {
+  const characters = Array.from(note)
+  return characters.slice(0, 6).join('') + (characters.length > 6 ? '…' : '')
+}

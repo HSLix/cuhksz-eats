@@ -60,6 +60,9 @@ test.beforeAll(async () => {
   await addPhoto('历史地点/opaque-招牌饭-30-时间不明.png')
   await addPhoto('历史地点/真实档口/IMG_20260905_120000-招牌饭-25-档口版本.png')
   await addPhoto('历史地点/真实档口/IMG_20260906_120000-招牌饭-26-档口新记录.png')
+  await addPhoto('历史地点/IMG_20260908_120000-长随记菜--一二三四五六七八.png')
+  await addPhoto('历史地点/IMG_20260905_120000-无随记菜--旧随记.png')
+  await addPhoto('历史地点/IMG_20260907_120000-无随记菜-15.png')
   await addPhoto('另一地点/IMG_20260906_120000-招牌饭-16-另一地点版本.png')
   await addPhoto('另一地点/opaqueonly-神秘菜-9-时间无法识别.png')
 
@@ -89,6 +92,40 @@ test('dish list merges same-name records and summarizes the latest photo and lat
   await expect(dish.getByRole('img', { name: '招牌饭' }))
     .toHaveAttribute('title', '最新记录：2026年9月4日')
   await expect(dish.getByText('共 5 条记录 · 查看详情 →')).toBeVisible()
+})
+
+test('dish cards preview only the latest record note', async ({ page }) => {
+  await page.goto(`${siteUrl}/places/%E5%8E%86%E5%8F%B2%E5%9C%B0%E7%82%B9`)
+  await expect(page.getByRole('link', { name: /长随记菜/ })).toContainText('随记：一二三四五六…')
+  await expect(page.getByRole('link', { name: /无随记菜/ })).not.toContainText('随记：')
+
+  await page.getByRole('link', { name: /真实档口/ }).click()
+  await expect(page.getByRole('link', { name: /招牌饭/ })).toContainText('随记：档口新记录')
+})
+
+test('browser and page back links restore the previous scroll position', async ({ page }) => {
+  await page.goto(siteUrl)
+  await page.addStyleTag({ content: 'main { min-height: 3000px !important; }' })
+  await expect(page.locator('.place-card')).toHaveCount(2)
+  await page.evaluate(() => { window.scrollTo(0, 500); document.querySelector('.place-card').click() })
+  await expect(page.getByRole('heading', { name: '历史地点' })).toBeVisible()
+  await page.evaluate(() => { window.scrollTo(0, 800); document.querySelector('.stall-card').click() })
+  await expect(page.getByRole('heading', { name: '真实档口' })).toBeVisible()
+  await page.evaluate(() => { window.scrollTo(0, 1000); document.querySelector('.dish-card').click() })
+  await expect(page.getByRole('heading', { name: '招牌饭' })).toBeVisible()
+
+  await page.getByRole('link', { name: '← 返回真实档口' }).click()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1000)
+  await page.getByRole('link', { name: '← 返回历史地点' }).click()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(800)
+  await page.getByRole('link', { name: '← 返回餐饮地点' }).click()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(500)
+
+  await page.evaluate(() => document.querySelector('.place-card').click())
+  await expect(page.getByRole('heading', { name: '历史地点' })).toBeVisible()
+  await page.evaluate(() => { window.scrollTo(0, 700); document.querySelector('.dish-card').click() })
+  await page.goBack()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(700)
 })
 
 test('dish detail shows every record field and sorts unknown times after dated records', async ({ page }) => {
