@@ -78,6 +78,9 @@ test.beforeAll(async () => {
   await addPhoto('占位封面地点/IMG_20260907_130000-菜单.png')
   await addPhoto('_不是校园补充/IMG_20260907_140000.png')
   await addPhoto('仅档口地点/唯一档口/IMG_20260907_150000-菜品-16.png')
+  await addPhoto('悠然居/IMG_20260907_160000-门面.png')
+  await addPhoto('悠然居/测试档口/IMG_20260907_160100-招牌菜-18.png')
+  await addPhoto('望湖楼/IMG_20260907_160200-测试菜品-19.png')
 
   const port = await reservePort()
   siteUrl = `http://127.0.0.1:${port}`
@@ -117,6 +120,28 @@ test('visitors browse dining-place and stall content without ownership guesses o
   await expect(page.getByRole('heading', { name: '其余照片' })).toBeVisible()
   await expect(page.getByText('档口菜品', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: '未归档', exact: true })).toHaveCount(0)
+})
+
+test('map pin expands its place preview and opens the matching place', async ({ page }) => {
+  await page.goto(siteUrl)
+  const map = page.getByRole('region', { name: '校园餐饮地图' })
+  const pin = map.getByRole('link', { name: '查看悠然居，已收录2张照片' })
+  await expect(pin.locator('.map-pin-label img')).toHaveAttribute('alt', '悠然居门面照片')
+  await expect(map.getByRole('link', { name: '查看望湖楼，已收录1张照片' }).locator('.map-pin-label img')).toHaveCount(0)
+  const head = await map.locator('.map-pin-head').first().boundingBox()
+  const tail = await pin.locator('.map-pin-label').boundingBox()
+  expect(head.y).toBeGreaterThan(tail.y + tail.height)
+  await expect(pin.locator('.map-pin-preview')).toBeHidden()
+  await pin.hover()
+  await expect(pin.locator('.map-pin-preview')).toBeVisible()
+  await expect(pin.locator('.map-pin-preview')).toContainText('测试档口')
+  const stall = pin.locator('.map-pin-stall').first()
+  const image = await stall.locator('img').boundingBox()
+  const name = await stall.locator(':scope > span:last-child').boundingBox()
+  expect(name.y).toBeGreaterThanOrEqual(image.y + image.height)
+  await pin.click()
+  await expect(page.getByRole('heading', { name: '悠然居', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(`${siteUrl}/places/${encodeURIComponent('悠然居')}`)
 })
 
 test('loose dish records always remain visible while the unarchived heading requires a stall', async ({ page }) => {

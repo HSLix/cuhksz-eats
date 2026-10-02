@@ -80,7 +80,9 @@ test('home shows the complete identity, freshness, rights, and single contact no
 
   await expect(page.locator('.hero').getByText(disclaimer, { exact: true })).toBeVisible()
   await expect(page.locator('.site-footer').getByText(disclaimer, { exact: true })).toBeVisible()
-  await expect(page.getByText('图片由 CUHKSZ Eats 提供；版权仍属于原摄影者。')).toBeVisible()
+  await expect(page.getByText('餐饮实拍图片由 CUHKSZ Eats 提供；版权仍属于原摄影者。')).toBeVisible()
+  await expect(page.locator('.site-footer').getByRole('link', { name: '香港中文大学（深圳）官网' }))
+    .toHaveAttribute('href', 'https://www.cuhk.edu.cn/zh-hans/page/4908')
   await expect(page.getByText('MIT License 仅适用于程序代码；网站文字、原始照片及生成衍生图不在授权范围内。')).toBeVisible()
 
   const repositoryLinks = page.getByRole('link', { name: /GitHub/ })
@@ -121,4 +123,3 @@ test('direct detail links retain the footer boundary, note label, and image righ
 //   await expect(viewer.getByRole('link')).toHaveCount(0)
 //   await expect(page.getByRole('link', { name: 'l0123i456@163.com' })).toHaveAttribute('href', 'mailto:l0123i456@163.com')
 // })
-
