@@ -106,6 +106,7 @@ test('visitors browse dining-place and stall content without ownership guesses o
 
   await expect(page.getByRole('heading', { name: '门面照片' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '菜单照片' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '放大查看菜单照片' })).toHaveCount(1)
   await expect(page.getByRole('heading', { name: '未归档', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: '普通相册' })).toBeVisible()
   await expect(page.getByText('未归档菜品', { exact: true })).toBeVisible()

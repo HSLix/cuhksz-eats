@@ -19,7 +19,7 @@ const mapLocations = [
   { name: '尚荷轩 学生中心2楼', x: 54, y: 63, tailX: 52, tailY: 55 },
   { name: '望湖楼 会议楼', x: 91, y: 71, tailX: 80, tailY: 62 },
   { name: '逸夫食堂 逸夫书院', x: 46, y: 63, tailX: 33, tailY: 55 },
-  { name: '音乐学院食堂', x: 20, y: 40, tailX: 5, tailY: 65 },
+  { name: '音乐学院食堂', x: 20, y: 40, tailX: 14, tailY: 65 },
 ]
 const mappedPlaces = computed(() => mapLocations.flatMap((location) => {
   const place = content.value?.places.find((candidate) => candidate.name === location.name)
