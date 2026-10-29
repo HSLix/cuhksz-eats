@@ -30,3 +30,6 @@ test-results/
 __pycache__/
 *.py[cod]
 .venv/
+
+
+uv run python manage.py publish

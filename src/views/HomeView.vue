@@ -11,15 +11,17 @@ const error = ref('')
 // Developer-maintained head and tail positions (percent of image width/height).
 const mapLocations = [
   { name: '海月廷 上园 思廷书院', x: 41, y: 19, tailX: 33, tailY: 18 },
-  { name: '麦当劳（m记） 上园 学勤书院', x: 46, y: 24, tailX: 37, tailY: 35 },
-  { name: '太清凉茶 上园 学勤书院', x: 50, y: 25, tailX: 57, tailY: 37 },
+  { name: '麦当劳（m记） 上园 学勤书院', x: 46, y: 24, tailX: 47, tailY: 35 },
+  { name: '太清凉茶 上园 学勤书院', x: 50, y: 25, tailX: 63, tailY: 35 },
   { name: '东西南北风 上园 永平书院', x: 49, y: 13, tailX: 64, tailY: 16 },
   { name: '天猫超市 上园', x: 49, y: 13, tailX: 62, tailY: 24 },
   { name: '悠然居 学生中心1楼', x: 54, y: 68, tailX: 63, tailY: 60 },
+  { name: '清水渡口', x: 54, y: 70, tailX: 77, tailY: 60 },
   { name: '尚荷轩 学生中心2楼', x: 54, y: 63, tailX: 52, tailY: 55 },
-  { name: '望湖楼 会议楼', x: 91, y: 71, tailX: 80, tailY: 62 },
+  { name: '望湖楼 会议楼', x: 93, y: 81, tailX: 90, tailY: 62 },
   { name: '逸夫食堂 逸夫书院', x: 46, y: 63, tailX: 33, tailY: 55 },
-  { name: '音乐学院食堂', x: 20, y: 40, tailX: 5, tailY: 65 },
+  { name: '音乐学院食堂', x: 20, y: 40, tailX: 14, tailY: 65 },
+  { name: '香波餐厅 上园', x: 37, y: 35, tailX: 27, tailY: 34 },
 ]
 const mappedPlaces = computed(() => mapLocations.flatMap((location) => {
   const place = content.value?.places.find((candidate) => candidate.name === location.name)
