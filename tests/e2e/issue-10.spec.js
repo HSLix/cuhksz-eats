@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { spawnSync } from 'node:child_process'
 import { createServer as createHttpServer } from 'node:http'
-import { cp, lstat, mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { appendFile, cp, lstat, mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -49,7 +49,7 @@ async function prepareRepository() {
   run('git', ['config', 'user.name', 'Issue 10 Test'], { cwd: checkout })
   run('git', ['config', 'user.email', 'issue-10@example.test'], { cwd: checkout })
   run('git', ['remote', 'add', 'origin', remote], { cwd: checkout })
-  run('git', ['add', '.'], { cwd: checkout })
+  run('git', ['add', '.', ':!node_modules'], { cwd: checkout })
   run('git', ['commit', '-m', 'test main'], { cwd: checkout })
   run('git', ['push', '-u', 'origin', 'main'], { cwd: checkout })
   return { root, checkout, remote }
@@ -134,12 +134,16 @@ test('one public command publishes only a complete sanitized static site to gh-p
     expect(run('git', ['check-ignore', 'images.zip'], { cwd: fixture.checkout }).stdout.trim())
       .toBe('images.zip')
     const archiveBefore = await stat(archive)
+    const deployedBefore = run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()
     const unchanged = run(path.join(repositoryRoot, '.venv', 'bin', 'python'), ['manage.py', 'publish'], {
       cwd: fixture.checkout,
       env: process.env,
     })
     expect(unchanged.stdout).toContain('原图内容未变化，保留本地归档：images.zip')
     expect((await stat(archive)).mtimeMs).toBe(archiveBefore.mtimeMs)
+    expect(unchanged.stdout).toContain('发布内容未变化，跳过提交和推送。')
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim())
+      .toBe(deployedBefore)
 
     const published = await publishedFiles(fixture.remote, fixture.root)
     expect(published.files).toContain('index.html')
@@ -152,7 +156,8 @@ test('one public command publishes only a complete sanitized static site to gh-p
     expect(published.files.some((file) => /^media\/photo-[a-f0-9]{16}-\d+w\.webp$/.test(file))).toBe(true)
     expect(published.files.some((file) => file.startsWith('src/'))).toBe(false)
     expect(published.files).not.toContain('manage.py')
-    expect(published.files.some((file) => /\.(png|jpe?g|heic|heif)$/i.test(file))).toBe(false)
+    expect(published.files.filter((file) => /\.(png|jpe?g|heic|heif)$/i.test(file)))
+      .toEqual([expect.stringMatching(/^assets\/campus-map-[\w-]+\.jpg$/)])
     expect(JSON.parse(await readFile(path.join(published.directory, 'content.json'), 'utf8')).searchIndex)
       .toHaveLength(4)
     expect(await readFile(path.join(published.directory, 'index.html'), 'utf8'))
@@ -208,7 +213,7 @@ test('a blocking validation error leaves the existing deployment unchanged', asy
   }
 })
 
-test('a later publish replaces removed content and keeps generated history bounded', async () => {
+test('a later publish removes old content and inherits the previous deployment', async () => {
   test.slow()
   const fixture = await prepareRepository()
   const python = path.join(repositoryRoot, '.venv', 'bin', 'python')
@@ -217,6 +222,7 @@ test('a later publish replaces removed content and keeps generated history bound
     const archive = path.join(fixture.checkout, 'images.zip')
     const firstArchive = await readFile(archive)
     const first = await publishedFiles(fixture.remote, fixture.root)
+    const firstCommit = run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()
     const firstMedia = first.files.filter((file) => file.startsWith('media/'))
     const mainBefore = run('git', ['--git-dir', fixture.remote, 'rev-parse', 'refs/heads/main']).stdout.trim()
 
@@ -239,11 +245,118 @@ test('a later publish replaces removed content and keeps generated history bound
     expect(second.files).toContain('places/全新餐饮地点/dishes/全新菜品/index.html')
     expect(second.files.some((file) => file.includes('测试餐饮地点'))).toBe(false)
     expect(firstMedia.every((file) => !secondMedia.includes(file))).toBe(true)
-    expect(run('git', ['--git-dir', fixture.remote, 'rev-list', '--count', 'gh-pages']).stdout.trim()).toBe('1')
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-list', '--count', 'gh-pages']).stdout.trim()).toBe('2')
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages^']).stdout.trim()).toBe(firstCommit)
     expect(run('git', ['--git-dir', fixture.remote, 'rev-parse', 'refs/heads/main']).stdout.trim())
       .toBe(mainBefore)
     expect(run('git', ['--git-dir', fixture.remote, 'ls-tree', '-r', '--name-only', 'main']).stdout)
       .not.toContain('images/')
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('a fresh checkout fetches the previous deployment from the push URL and reuses image objects', async () => {
+  test.slow()
+  const fixture = await prepareRepository()
+  const python = path.join(repositoryRoot, '.venv', 'bin', 'python')
+  try {
+    run(python, ['-c',
+      'from PIL import Image; import random, sys; Image.frombytes("RGB", (512, 512), random.Random(0).randbytes(512 * 512 * 3)).save(sys.argv[1])',
+      path.join(fixture.checkout, 'images', '测试餐饮地点', 'large.png'),
+    ])
+    run(python, ['manage.py', 'publish'], { cwd: fixture.checkout, env: process.env })
+    const firstCommit = run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()
+    const firstFiles = run('git', ['--git-dir', fixture.remote, 'ls-tree', '-r', 'gh-pages', 'media/']).stdout
+
+    const fresh = path.join(fixture.root, 'fresh')
+    run('git', ['clone', '--single-branch', '--branch', 'main', fixture.remote, fresh])
+    run('git', ['config', 'user.name', 'Issue 10 Test'], { cwd: fresh })
+    run('git', ['config', 'user.email', 'issue-10@example.test'], { cwd: fresh })
+    await symlink(path.join(repositoryRoot, 'node_modules'), path.join(fresh, 'node_modules'))
+    await cp(path.join(fixture.checkout, 'images'), path.join(fresh, 'images'), { recursive: true })
+    run('git', ['remote', 'set-url', '--push', 'origin', fixture.remote], { cwd: fresh })
+    run('git', ['remote', 'set-url', 'origin', path.join(fixture.root, 'missing-fetch.git')], { cwd: fresh })
+    await writeFile(path.join(fresh, 'index.html'), `${await readFile(path.join(fresh, 'index.html'), 'utf8')}\n<!-- updated -->\n`)
+    run(python, ['manage.py', 'publish'], { cwd: fresh, env: process.env })
+
+    const secondCommit = run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages^']).stdout.trim()).toBe(firstCommit)
+    expect(run('git', ['--git-dir', fixture.remote, 'ls-tree', '-r', 'gh-pages', 'media/']).stdout).toBe(firstFiles)
+    const incrementalPack = spawnSync('git', ['pack-objects', '--revs', '--stdout'], {
+      cwd: fresh, input: `${secondCommit}\n^${firstCommit}\n`,
+    })
+    const fullPack = spawnSync('git', ['pack-objects', '--revs', '--stdout'], {
+      cwd: fresh, input: `${secondCommit}\n`, maxBuffer: 8 * 1024 * 1024,
+    })
+    expect(incrementalPack.status).toBe(0)
+    expect(fullPack.status).toBe(0)
+    expect(incrementalPack.stdout.length).toBeLessThan(fullPack.stdout.length / 10)
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('lookup and fetch failures stop publication without changing the deployment', async () => {
+  test.slow()
+  const fixture = await prepareRepository()
+  const python = path.join(repositoryRoot, '.venv', 'bin', 'python')
+  try {
+    run(python, ['manage.py', 'publish'], { cwd: fixture.checkout, env: process.env })
+    const before = run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()
+    const fetchFailed = execute(python, ['-c', `
+import subprocess
+from unittest.mock import patch
+from src.cuhksz_eats import cli
+original_run = subprocess.run
+def fail_fetch(command, **kwargs):
+    if command[1] == "fetch":
+        raise subprocess.CalledProcessError(128, command, stderr="simulated fetch failure")
+    return original_run(command, **kwargs)
+with patch.object(subprocess, "run", side_effect=fail_fetch):
+    raise SystemExit(cli.run_publish(cli.DEFAULT_SOURCE))
+`], { cwd: fixture.checkout, env: process.env })
+    expect(fetchFailed.status).toBe(1)
+    expect(fetchFailed.stderr).toContain('simulated fetch failure')
+    expect(fetchFailed.stdout).not.toContain('发布完成')
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()).toBe(before)
+    run('git', ['remote', 'set-url', '--push', 'origin', path.join(fixture.root, 'missing.git')], {
+      cwd: fixture.checkout,
+    })
+    const failed = execute(python, ['manage.py', 'publish'], { cwd: fixture.checkout, env: process.env })
+    expect(failed.status).toBe(1)
+    expect(failed.stderr).toContain('发布失败')
+    expect(failed.stdout).not.toContain('发布完成')
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()).toBe(before)
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('a concurrent deployment is preserved when the push is rejected', async () => {
+  test.slow()
+  const fixture = await prepareRepository()
+  const python = path.join(repositoryRoot, '.venv', 'bin', 'python')
+  try {
+    run(python, ['manage.py', 'publish'], { cwd: fixture.checkout, env: process.env })
+    const before = run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages']).stdout.trim()
+    await writeFile(path.join(fixture.checkout, 'index.html'), `${await readFile(path.join(fixture.checkout, 'index.html'), 'utf8')}\n<!-- local update -->\n`)
+    // Advance the remote during the build, after publish has selected its parent.
+    await appendFile(path.join(fixture.checkout, 'scripts', 'generate-static-routes.mjs'), `
+import { execFileSync } from 'node:child_process'
+const remoteGit = ['--git-dir', ${JSON.stringify(fixture.remote)}]
+const remoteTree = execFileSync('git', [...remoteGit, 'rev-parse', 'gh-pages^{tree}'], { encoding: 'utf8' }).trim()
+const concurrent = execFileSync('git', [...remoteGit, '-c', 'user.name=Concurrent', '-c', 'user.email=concurrent@example.test', 'commit-tree', remoteTree, '-p', ${JSON.stringify(before)}, '-m', 'Concurrent deployment'], { encoding: 'utf8' }).trim()
+execFileSync('git', [...remoteGit, 'update-ref', 'refs/heads/gh-pages', concurrent])
+`)
+    const failed = execute(python, ['manage.py', 'publish'], { cwd: fixture.checkout, env: process.env })
+    expect(failed.status).toBe(1)
+    expect(failed.stderr).toContain('不要强制推送')
+    expect(failed.stdout).not.toContain('发布完成')
+    expect(run('git', ['--git-dir', fixture.remote, 'log', '-1', '--format=%s', 'gh-pages']).stdout.trim())
+      .toBe('Concurrent deployment')
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-parse', 'gh-pages^']).stdout.trim()).toBe(before)
+    expect(run('git', ['--git-dir', fixture.remote, 'rev-list', '--count', 'gh-pages']).stdout.trim()).toBe('2')
   } finally {
     await rm(fixture.root, { recursive: true, force: true })
   }

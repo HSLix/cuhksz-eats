@@ -933,6 +933,23 @@ def run_publish(source: Path, base_path: str | None = None) -> int:
             "/" if repository_name.lower().endswith(".github.io") else f"/{repository_name}/"
         )
     try:
+        previous = subprocess.run(
+            [git, "ls-remote", "--exit-code", remote_url, "refs/heads/gh-pages"],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        parent = None
+        if previous.returncode == 0:
+            parent = previous.stdout.split()[0]
+            subprocess.run(
+                [git, "fetch", "--no-tags", remote_url, parent],
+                cwd=REPOSITORY_ROOT,
+                check=True,
+            )
+        elif previous.returncode != 2:
+            previous.check_returncode()
+
         subprocess.run(
             [npm, "run", "build"],
             cwd=REPOSITORY_ROOT,
@@ -962,8 +979,19 @@ def run_publish(source: Path, base_path: str | None = None) -> int:
                 capture_output=True,
                 text=True,
             ).stdout.strip()
+            if parent:
+                previous_tree = subprocess.run(
+                    [git, "rev-parse", f"{parent}^{{tree}}"],
+                    cwd=REPOSITORY_ROOT,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+                if tree == previous_tree:
+                    print("发布内容未变化，跳过提交和推送。")
+                    return 0
             commit = subprocess.run(
-                [git, "commit-tree", tree, "-m", "Deploy CUHKSZ Eats"],
+                [git, "commit-tree", tree, *(["-p", parent] if parent else []), "-m", "Deploy CUHKSZ Eats"],
                 cwd=REPOSITORY_ROOT,
                 env=git_environment,
                 check=True,
@@ -971,16 +999,22 @@ def run_publish(source: Path, base_path: str | None = None) -> int:
                 text=True,
             ).stdout.strip()
             subprocess.run(
-                [git, "push", "--force", "origin", f"{commit}:refs/heads/gh-pages"],
+                [git, "push", remote_url, f"{commit}:refs/heads/gh-pages"],
                 cwd=REPOSITORY_ROOT,
                 env=git_environment,
                 check=True,
             )
     except subprocess.CalledProcessError as error:
-        print(f"错误：发布失败（命令退出码 {error.returncode}），gh-pages 未完成更新。", file=sys.stderr)
+        if error.stderr:
+            print(error.stderr.strip(), file=sys.stderr)
+        print(
+            f"错误：发布失败（命令退出码 {error.returncode}）。请检查网络和权限；"
+            "若远程已有新发布，请确认本地内容完整后重新运行，不要强制推送。",
+            file=sys.stderr,
+        )
         return 1
 
-    print("发布完成：gh-pages 已替换为本次完整静态站点。")
+    print("发布完成：gh-pages 已更新为本次完整静态站点，后续发布将复用未变化的文件。")
     return 0
 
 
